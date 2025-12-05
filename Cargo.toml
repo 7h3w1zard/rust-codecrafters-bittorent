@@ -5,7 +5,10 @@ edition = "2024"
 
 [dependencies]
 anyhow = "1.0.68"                                                # helps wrap responses from reqwest
-clap = { version = "4.0.32", features = ["derive"]} # http requests
+clap = { version = "4.0.32", features = ["derive"]}                # creating a cli
+hex = "0.4.3"
+reqwest = { version = "0.11.18", features = ["json", "blocking"] } # http requests
 serde = { version = "1.0.136", features = ["derive"] }             # for json mangling
-serde_bencode = "0.2.3"                                         # for dealing with bytes
-serde_json = "1.0.105"
+serde_bencode = "0.2.3"                                            # for bencode encoding/decoding
+serde_json = "1.0.105"                                             # for json mangling                                        # for url encoding
+sha1 = "0.10.1"                                                    # hashing

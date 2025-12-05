@@ -1,9 +1,10 @@
 use anyhow::Context;
 use clap::{Parser, Subcommand};
 use hashes::Hashes;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_bencode;
 use serde_json;
+use sha1::{Digest, Sha1};
 use std::path::PathBuf;
 
 #[derive(Parser, Debug)]
@@ -19,34 +20,8 @@ enum Command {
     Info { torrent: PathBuf },
 }
 
-// Usage: your_program.sh decode "<encoded_value>"
-fn main() -> anyhow::Result<()> {
-    let args = Args::parse();
-
-    match args.command {
-        Command::Decode { value } => {
-            // let v: serde_json::Value = serde_bencode::from_str(&value).unwrap();
-            let v = decode_bencoded_value(&value).0;
-            println!("{v}");
-        }
-        Command::Info { torrent } => {
-            let dot_torrent = std::fs::read(torrent).context("read torrent file")?;
-            let t: Torrent =
-                serde_bencode::from_bytes(&dot_torrent).context("parse torrent file")?;
-            println!("Tracker URL: {}", t.announce);
-            if let Keys::SingleFile { length } = t.info.keys {
-                println!("Length: {length}");
-            } else {
-                todo!()
-            }
-        }
-    }
-
-    Ok(())
-}
-
 /// A torrent file (metainfo file) contains a bencoded dictionary.
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 struct Torrent {
     /// URL to a "tracker", that keeps track of peers participating in the sharing of a torrent.
     announce: String,
@@ -55,7 +30,7 @@ struct Torrent {
     info: Info,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 struct Info {
     /// suggested name to save the file / directory as
     name: String,
@@ -71,7 +46,7 @@ struct Info {
     keys: Keys,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(untagged)]
 enum Keys {
     SingleFile {
@@ -83,7 +58,7 @@ enum Keys {
     },
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 struct File {
     length: usize,
     path: Vec<String>,
@@ -146,7 +121,38 @@ fn decode_bencoded_value(encoded_value: &str) -> (serde_json::Value, &str) {
     panic!("Unhandled encoded value: {}", encoded_value)
 }
 
+fn main() -> anyhow::Result<()> {
+    let args = Args::parse();
+
+    match args.command {
+        Command::Decode { value } => {
+            // let v: serde_json::Value = serde_bencode::from_str(&value).unwrap();
+            let v = decode_bencoded_value(&value).0;
+            println!("{v}");
+        }
+        Command::Info { torrent } => {
+            let dot_torrent = std::fs::read(torrent).context("read torrent file")?;
+            let t: Torrent =
+                serde_bencode::from_bytes(&dot_torrent).context("parse torrent file")?;
+            println!("Tracker URL: {}", t.announce);
+            if let Keys::SingleFile { length } = t.info.keys {
+                println!("Length: {length}");
+            } else {
+                todo!()
+            }
+            let info_encoded = serde_bencode::to_bytes(&t.info).context("re-encode info section")?;
+            let mut hasher = Sha1::new();
+            hasher.update(&info_encoded);
+            let info_hash = hasher.finalize();
+            println!("Info Hash: {}", hex::encode(&info_hash));
+        }
+    }
+
+    Ok(())
+}
+
 mod hashes {
+    use serde::ser::{Serialize, SerializeMap, SerializeSeq, Serializer};
     use serde::{
         Deserialize, Deserializer,
         de::{self, Visitor},
@@ -186,6 +192,17 @@ mod hashes {
             D: Deserializer<'de>,
         {
             deserializer.deserialize_bytes(HashesVisitor)
+        }
+    }
+
+    impl Serialize for Hashes
+    {
+        fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+        where
+            S: Serializer,
+        {
+            let single_slice = self.0.concat();
+            serializer.serialize_bytes(&single_slice)
         }
     }
 }
