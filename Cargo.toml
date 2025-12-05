@@ -4,3 +4,8 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+anyhow = "1.0.68"                                                # helps wrap responses from reqwest
+clap = { version = "4.0.32", features = ["derive"]} # http requests
+serde = { version = "1.0.136", features = ["derive"] }             # for json mangling
+serde_bencode = "0.2.3"                                         # for dealing with bytes
+serde_json = "1.0.105"
