@@ -1,5 +1,5 @@
 [package]
-name = "codecrafters_bittorent"
+name = "codecrafters_bittorrent"
 version = "0.1.0"
 edition = "2024"
 
@@ -11,4 +11,6 @@ reqwest = { version = "0.11.18", features = ["json", "blocking"] } # http reques
 serde = { version = "1.0.136", features = ["derive"] }             # for json mangling
 serde_bencode = "0.2.3"                                            # for bencode encoding/decoding
 serde_json = "1.0.105"                                             # for json mangling                                        # for url encoding
+serde_urlencoded = "0.7.1"                                         # for url encoding
 sha1 = "0.10.1"                                                    # hashing
+tokio = { version = "1.23.0", features = ["full"] }                # async http requests
